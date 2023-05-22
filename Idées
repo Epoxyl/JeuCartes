@@ -1,0 +1,8 @@
+hébergé sur un site web qui enregistre les parties qu'on fait
+=>
+-agents qui s'entraînent entres elles
+-agents qui s'entraînent contre des joueurs
+-parties de joueurs interprétés par les modèles
+
+
+Générer une liste de "contextes de parties" qui sera une liste finie pour entraîner les agents.

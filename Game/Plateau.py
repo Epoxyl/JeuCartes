@@ -3,7 +3,9 @@ import random
 from Game.Deck import Deck, get_card_string
 from Game.Player import Player
 
-class Plateau:
+from gymnasium import Env
+
+class Plateau(Env):
   description = ""
   classement = []
 
@@ -12,18 +14,22 @@ class Plateau:
 
   players = []
 
-  def __init__(self, nb_players, description):
+  def __init__(self, players, description, add_Agent):
+    """
+    :param players: name list of the players
+    :param description: description to show
+    :param add_Agent: if True, add an agent as a player named Bob
+    """
     self.deck = Deck(52)
     self.deck.shuffle_cards()
 
-    self.players.append(Player("Alexandre"))
-    self.players.append(Player("Antoine"))
-    self.players.append(Player("Julien"))
-    self.players.append(Player("Yohann"))
+    for player_name in players:
+      self.players.append(Player(player_name))
+
+    if add_Agent:
+      self.players.append(Player("Bob", is_agent=True))
 
     self.description = description
-
-    self.ditribute_to_players(7)
 
   def ditribute_to_players(self, number_cards):
     print("Ditributing to players...")
@@ -31,6 +37,18 @@ class Plateau:
       for player in self.players:
         card = self.deck.draw_card()
         player.add_card(card)
+
+  def players_have_cards(self):
+    """
+    Returns if at least one player still have cards
+    :return:
+    """
+    still_playing = False
+    for player in self.players:
+      if len(player.hand.cards):
+        still_playing = True
+
+    return still_playing
 
   def show(self, current_player, starting=False):
     """

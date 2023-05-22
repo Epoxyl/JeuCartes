@@ -1,0 +1,3 @@
+Create agent class
+finish to adapt the President class as AI env (tour + fin + update de l'agent)
+Actually make the agent choose a card : add it in player_choose_card, and the step (rewards) in
