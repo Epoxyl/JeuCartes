@@ -56,9 +56,6 @@ class Player:
     print("Veuillez choisir la carte à jouer...")
     card_index = int(input()) - 1
 
-    if self.is_agent and card_index >= len(self.hand.cards) or card_index < 0:
-      raise InvalidCardException("Not the right index !")
-
     while card_index >= len(self.hand.cards) or card_index < 0:
       print("Erreur dans la saisie de votre carte. Veuillez choisir le numéro de la carte entre 1 et {}".format(len(self.hand.cards)))
       card_index = int(input()) - 1

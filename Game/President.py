@@ -1,6 +1,7 @@
 from collections import Counter
 
 from Game.Deck import get_card_string
+from Game.IA.PresidentEnvironment import PresidentAgent
 from Game.Plateau import Plateau
 from Game.Player import Player
 from Game.Utils.Exceptions import InvalidCardException
@@ -36,14 +37,16 @@ class President(Plateau):
     print("##########{} commence :###############".format(player))
     self.show(player, True)
 
-    # Player and self.defausse is the observation in this context. player_choose_card is the get_action function in this context
-    card = self.player_choose_card(player)
+    if player.__class__ == PresidentAgent:
+      player.get_action(self)
+    else:
+      # Player and self.defausse is the observation in this context. player_choose_card is the get_action function in this context
+      card = self.player_choose_card(player)
 
-    # card is the action in this context. play_card is the step function in this context
-    self.play_card(player, card)
-
-    if nb_cards == 0:
-      self.add_winner(player)
+      # card is the action in this context. play_card is the step function in this context
+      nb_cards = self.play_card(player, card)
+      if nb_cards == 0:
+        self.add_winner(player)
 
     last_played = player_id
     player_id = (player_id + 1) % len(self.players)
