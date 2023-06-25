@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, List
 import random
 from datetime import datetime
 
@@ -164,7 +164,7 @@ class PresidentAgent(Player):
   """
   Imported from OpenAI's Gym
   """
-  def __init__(self, learning_rate: float, initial_epsilon: float, epsilon_decay: float, final_epsilon: float,
+  def __init__(self, learning_rate: float = 0.1, initial_epsilon: float = 1.0, epsilon_decay: float = 0.001, final_epsilon: float = 0.1,
                discount_factor: float = 0.95):
     """Initialize a Reinforcement Learning agent with an empty dictionary
     of state-action values (q_values), a learning rate and an epsilon.
@@ -188,13 +188,18 @@ class PresidentAgent(Player):
 
     self.training_error = []
 
-  def get_action(self, obs: tuple[int, int, bool]) -> int:
+  def get_action(self, obs: tuple[int, List[int]]) -> int:
     """
     Returns the best action with probability (1 - epsilon)
     otherwise a random action with probability epsilon to ensure exploration.
     """
-    if self.is_agent and card_index >= len(self.hand.cards) or card_index < 0:
+
+    # Action la plus "logique" pour l'agent, à partir de l'observation (transformée en tant que clé des q_values). Todo : ajouter du random pour le laisser découvrir
+    card_index = np.argmax(self.q_values[str(obs)])
+    if card_index >= len(self.hand.cards) or card_index < 0:
       raise InvalidCardException("Not the right index !")
+
+    """
     # with probability epsilon return a random action to explore the environment
     if np.random.random() < self.epsilon:
       return env.action_space.sample()
@@ -202,25 +207,50 @@ class PresidentAgent(Player):
     # with probability (1 - epsilon) act greedily (exploit)
     else:
       return int(np.argmax(self.q_values[obs]))
+    """
+
+    return card_index
+
 
   def update(
           self,
-          obs: tuple[int, int, bool],
+          obs: tuple[int, List[int]],
           action: int,
           reward: float,
           terminated: bool,
-          next_obs: tuple[int, int, bool],
+          next_obs: tuple[int, List[int]],
   ):
     """Updates the Q-value of an action."""
-    future_q_value = (not terminated) * np.max(self.q_values[next_obs])
+    future_q_value = (not terminated) * np.max(self.q_values[str(next_obs)])
     temporal_difference = (
-            reward + self.discount_factor * future_q_value - self.q_values[obs][action]
+            reward + self.discount_factor * future_q_value - self.q_values[str(obs)][action]
     )
 
-    self.q_values[obs][action] = (
-            self.q_values[obs][action] + self.lr * temporal_difference
+    self.q_values[str(obs)][action] = (
+            self.q_values[str(obs)][action] + self.lr * temporal_difference
     )
     self.training_error.append(temporal_difference)
 
   def decay_epsilon(self):
     self.epsilon = max(self.final_epsilon, self.epsilon - epsilon_decay)
+
+  def check_convergence(self, threshold: float = 0.1, num_episodes: int = 100):
+    last_n_errors = self.training_error[-num_episodes:]
+    avg_error = sum(last_n_errors) / num_episodes
+
+    if avg_error < threshold:
+      print("Convergence reached.")
+    else:
+      print("Convergence not reached.")
+
+    print(f"Average training error over the last {num_episodes} episodes: {avg_error}")
+
+  def export(self, file_path: str):
+    data = {
+      "q_values": dict(self.q_values),
+      "training_error": self.training_error,
+      #"other_data": ...  # Ajoutez ici d'autres données importantes que vous souhaitez enregistrer
+    }
+
+    with open(file_path, "w") as f:
+      json.dump(data, f)

@@ -38,6 +38,7 @@ class President(Plateau):
     self.show(player, True)
 
     if player.__class__ == PresidentAgent:
+      print("here")
       player.get_action(self)
     else:
       # Player and self.defausse is the observation in this context. player_choose_card is the get_action function in this context
