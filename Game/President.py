@@ -1,26 +1,35 @@
 from collections import Counter
 
-from Game.Deck import get_card_string
-from Game.IA.PresidentEnvironment import PresidentAgent
+from Game.Deck import get_card_string, Deck
+from Game.IA.PresidentEnvironment import PresidentAgent, GreedPlayer
 from Game.Plateau import Plateau
 from Game.Player import Player
 from Game.Utils.Exceptions import InvalidCardException
 
 
 class President(Plateau):
-  def __init__(self, players):
-    super().__init__(players, "Président")
-    self.ditribute_to_players(7)
+  def __init__(self, players, add_agent=False, environment=None):
+    super().__init__(players, "Président", add_agent, environment)
 
   def launch_game(self):
     """
     One game of a president. We launch "tours" while players have cards, and start a new one each time nobody can play.
     :return:
     """
+    self.deck = Deck(52)
+    self.deck.shuffle_cards()
+
+    self.empty_player_cards()
+    self.empty_played_cards()
+    self.ditribute_to_players(7)
+
     player_id = 0
     while self.players_have_cards():
       print("------------ Nouveau tour !--------------")
+      while not len(self.players[player_id].hand_values()):
+        player_id=(player_id+1)%len(self.players)
       player_id = self.tour(player_id)
+      print("------------ Fin du tour !--------------")
 
     print("Fin du jeu !")
     print("Président : {}".format(self.classement[0]))
@@ -33,21 +42,22 @@ class President(Plateau):
     :param player_id: Id of the player to start the tour
     :return:
     """
+    self.empty_played_cards()
+
     player = self.players[player_id]
     print("##########{} commence :###############".format(player))
     self.show(player, True)
 
+    # Different actions depending on if agent or human
     if player.__class__ == PresidentAgent:
-      print("here")
-      player.get_action(self)
+      card = player.step(self.played_cards)
     else:
-      # Player and self.defausse is the observation in this context. player_choose_card is the get_action function in this context
       card = self.player_choose_card(player)
 
-      # card is the action in this context. play_card is the step function in this context
-      nb_cards = self.play_card(player, card)
-      if nb_cards == 0:
-        self.add_winner(player)
+    nb_cards = self.play_card(player, card)
+    if nb_cards == 0:
+      if self.add_winner(player):
+        return player_id
 
     last_played = player_id
     player_id = (player_id + 1) % len(self.players)
@@ -59,13 +69,21 @@ class President(Plateau):
       print("##########Au tour de {} :###############".format(player))
       if self.can_play(player):
         self.show(player)
-        nb_cards = self.play_card(player)
-        didnt_play = 0
+        # Different actions depending on if agent or human
+        if player.__class__ == PresidentAgent:
+          card = player.step(self.played_cards)
+        else:
+          card = self.player_choose_card(player)
+
+        nb_cards = self.play_card(player, card)
         if nb_cards == 0:
-          self.add_winner(player)
+          if self.add_winner(player):
+            return player_id
+
+        didnt_play = 0
         last_played = player_id
       else:
-        print("{} ne peut pas jouer, il doit passer son tour !".format(player))
+        print("{} ne peut pas jouer ou a déjà fini, il doit passer son tour !".format(player))
         didnt_play += 1
 
       player_id = (player_id + 1) % len(self.players)
@@ -76,7 +94,6 @@ class President(Plateau):
       while last_played != original_last_played and not len(self.players[last_played].hand.cards):
         last_played = (last_played + 1) % len(self.players)
 
-    print("Fin du tour.")
     return last_played
 
   def can_play(self, player, only=False):
@@ -86,42 +103,49 @@ class President(Plateau):
     :param only: if True, the player has to play only the current card ("xxx ou rien")
     :return:
     """
-    if not len(self.defausse.cards):
+    if not len(self.played_cards.cards):
       return True
 
     if not len(player.hand.cards):
       return False
 
-    defausse_value = self.defausse.cards[-1] % 13
+    last_card_value = self.played_cards.cards[-1] % 13 if len(self.played_cards.cards) else 0
+
     for card in player.hand.cards:
-      if only and (card % 13) == defausse_value:
+      if only and (card % 13) == last_card_value:
         return True
-      elif (card % 13) >= defausse_value:
+      elif (card % 13) >= last_card_value:
         return True
 
     return False
 
   def player_choose_card(self, player, starting=False):
     """
-    Make the player (AI or human) choose a card to play. Observations are the player's hand and the defausse.
+    Make the player (AI or human) choose a card to play. Observations are the player's hand and the played_cards.
     :param player:
     :param starting: The playter is starting the round
     :return: Played card
     """
-    card = player.choose_card()
 
-    if not starting:
-      last_card = self.defausse.cards[-1]
+    last_card = self.played_cards.cards[-1] if len(self.played_cards.cards) else 0
 
-      if player.is_agent and card % 13 < last_card % 13:
-        raise InvalidCardException(
-          "Carte {} plus basse que {}. Veuillez en choisir une autre.".format(get_card_string(card),
-                                                                              get_card_string(last_card)))
+    if player.__class__ == GreedPlayer:
+      ecart = 14
+      played_card = player.hand.cards[0]
+      for card in player.hand.cards:
+        if 0 <= card % 13 - last_card % 13 < ecart:
+          played_card = card
+          ecart = card % 13 - last_card % 13
 
-      while card % 13 < last_card % 13:
-        print("Carte {} plus basse que {}. Veuillez en choisir une autre.".format(get_card_string(card),
-                                                                                  get_card_string(last_card)))
-        card = player.choose_card()
+      return played_card
+    else:
+      card = player.choose_card()
+
+      if not starting:
+        while card % 13 < last_card % 13:
+          print("Carte {} plus basse que {}. Veuillez en choisir une autre.".format(get_card_string(card),
+                                                                                    get_card_string(last_card)))
+          card = player.choose_card()
 
     return card
 
@@ -131,14 +155,21 @@ class President(Plateau):
     :return:
     """
 
-    self.defausse.add_card(card)
+    print(card)
+    self.played_cards.add_card(card)
     new_hand_length = player.remove_card(card)
     return new_hand_length
 
   def add_winner(self, player):
-    print("{} a fini son jeu ! Bien joué !")
+    """
+    Returns : if the winner is president
+    :param player:
+    :return:
+    """
+    print("{} a fini son jeu ! Bien joué !".format(player.name))
     self.classement.append(player)
+    return len(self.classement) == 1
 
   def _get_obs(self, player):
-    last_card = self.defausse.cards[-1] if len(self.defausse.cards) else 0
+    last_card = self.played_cards.cards[-1] if len(self.played_cards.cards) else 0
     return [player.hand, last_card]  # todo: Add played cards

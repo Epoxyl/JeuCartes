@@ -1,3 +1,7 @@
-Create agent class
-finish to adapt the President class as AI env (tour + fin + update de l'agent)
-Actually make the agent choose a card : add it in player_choose_card, and the step (rewards) in
+give also reward depending on the length of its hand
+
+update à chaque action ? Si oui, quelles obs et next_obs ? Celles après sa prochaine action
+
+Stocker et interpréter les résultats de l'agent : voir s'il y a un apprentissage
+Lui donner des parties fixes (un ordre de cartes fix) ?
+Trier les cartes par vvaleur pour que ce soit plus simple pour lui ?

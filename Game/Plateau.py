@@ -1,9 +1,11 @@
 import random
 
 from Game.Deck import Deck, get_card_string
+from Game.IA.PresidentEnvironment import PresidentAgent, GreedPlayer
 from Game.Player import Player
 
 from gymnasium import Env
+
 
 class Plateau(Env):
   description = ""
@@ -11,23 +13,25 @@ class Plateau(Env):
 
   deck = None
   defausse = Deck()
+  played_cards = Deck()
 
   players = []
 
-  def __init__(self, players, description, add_Agent):
+  def __init__(self, players, description="", add_agent=False, environment=None):
     """
     :param players: name list of the players
     :param description: description to show
     :param add_Agent: if True, add an agent as a player named Bob
     """
-    self.deck = Deck(52)
-    self.deck.shuffle_cards()
 
-    for player_name in players:
-      self.players.append(Player(player_name))
 
-    if add_Agent:
-      self.players.append(Player("Bob", is_agent=True))
+    for name, type in players.items():
+      if type == "Human":
+        self.players.append(Player(name))
+      elif type == "Greedy":
+        self.players.append(GreedPlayer(name))
+      elif type == "Learning":
+        self.players.append(PresidentAgent(name, environment))
 
     self.description = description
 
@@ -37,6 +41,14 @@ class Plateau(Env):
       for player in self.players:
         card = self.deck.draw_card()
         player.add_card(card)
+
+  def empty_played_cards(self):
+    self.defausse.cards += self.played_cards.cards
+    self.played_cards.cards = []
+
+  def empty_player_cards(self):
+    for player in self.players:
+      player.empty_hand()
 
   def players_have_cards(self):
     """
@@ -57,6 +69,12 @@ class Plateau(Env):
     :return:
     """
     if not starting:
-      print("Défausse : {} ({})".format(get_card_string(self.defausse.cards[-1]), self.defausse.cards[-1]))
+      print("Défausse : {} ({})".format(get_card_string(self.played_cards.cards[-1]), self.played_cards.cards[-1]))
 
     current_player.show_hand()
+
+  def update_agents(self):
+    for player in self.players:
+      if player.__class__ == PresidentAgent:
+        player.update()
+

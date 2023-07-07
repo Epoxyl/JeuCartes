@@ -2,8 +2,10 @@ import random
 
 cards_value = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "valet", "dame", "roi", "as"]
 
+
 def get_card_string(card):
-  return cards_value[card % 13]
+  return cards_value[card % 13] + "("+str(card)+")"
+
 
 class Deck:
   cards = None
@@ -11,8 +13,11 @@ class Deck:
   def __init__(self, nb_cards=0):
     self.cards = []
 
-    for i in range(1, nb_cards+1):
+    for i in range(1, nb_cards + 1):
       self.cards.append(i)
+
+  def values(self):
+    return [card % 13 for card in self.cards]
 
   def shuffle_cards(self):
     random.shuffle(self.cards)

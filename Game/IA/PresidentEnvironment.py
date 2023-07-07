@@ -1,20 +1,17 @@
-import os
-from typing import Optional, List
-import random
-from datetime import datetime
-
+import json
+from typing import List
 import numpy as np
 
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.error import DependencyNotInstalled
 
+from Game.Deck import get_card_string
 from Game.Player import Player
 from Game.Utils.Exceptions import InvalidCardException
 
 from collections import defaultdict
 
-from Game.__main__ import env
 
 class PresidentEnv(gym.Env):
   """
@@ -117,54 +114,20 @@ class PresidentEnv(gym.Env):
   def __init__(self, nb_cards_hand=7, nb_cards=52, add_Agent=True):
     # Possibilités d'actions
     self.action_space = spaces.Discrete(nb_cards_hand)
-
     # Informations sur le jeu (carte actuelle, main actuelle, cartes jouées)
     self.observation_space = spaces.Tuple(
       (spaces.Discrete(nb_cards), spaces.Discrete(nb_cards_hand), spaces.Discrete(nb_cards))
     )
 
-  def step(self, action):
-    try:
-      assert self.action_space.contains(action)
-      reward = 0.0
-    except InvalidCardException as e:
-      # Ne peux pas jouer la carte => stop de l'épisode
-      reward = -10.0
-
-    if action:
-      self.player.append(draw_card(self.np_random))
-      if is_bust(self.player):
-        terminated = True
-        reward = -1.0
-      else:
-        terminated = False
-        reward = 0.0
-    else:  # stick: play out the dealers hand, and score
-      terminated = True
-      while sum_hand(self.dealer) < 17:
-        self.dealer.append(draw_card(self.np_random))
-      reward = cmp(score(self.player), score(self.dealer))
-      if self.sab and is_natural(self.player) and not is_natural(self.dealer):
-        # Player automatically wins. Rules consistent with S&B
-        reward = 1.0
-      elif (
-              not self.sab
-              and self.natural
-              and is_natural(self.player)
-              and reward == 1.0
-      ):
-        # Natural gives extra points, but doesn't autowin. Legacy implementation
-        reward = 1.5
-
-    if self.render_mode == "human":
-      self.render()
-    return self._get_obs(), reward, terminated, False, {}
 
 class PresidentAgent(Player):
   """
   Imported from OpenAI's Gym
   """
-  def __init__(self, learning_rate: float = 0.1, initial_epsilon: float = 1.0, epsilon_decay: float = 0.001, final_epsilon: float = 0.1,
+  environment = None
+
+  def __init__(self, name, environment, learning_rate: float = 0.1, initial_epsilon: float = 1.0,
+               epsilon_decay: float = 0.001, final_epsilon: float = 0.1,
                discount_factor: float = 0.95):
     """Initialize a Reinforcement Learning agent with an empty dictionary
     of state-action values (q_values), a learning rate and an epsilon.
@@ -176,8 +139,9 @@ class PresidentAgent(Player):
         final_epsilon: The final epsilon value
         discount_factor: The discount factor for computing the Q-value
     """
-    super().__init__("Bob", True)
-    self.q_values = defaultdict(lambda: np.zeros(env.action_space.n))
+    super().__init__(name)
+    self.environment = environment
+    self.q_values = defaultdict(lambda: np.zeros(self.environment.action_space.n))
 
     self.lr = learning_rate
     self.discount_factor = discount_factor
@@ -185,6 +149,9 @@ class PresidentAgent(Player):
     self.epsilon = initial_epsilon
     self.epsilon_decay = epsilon_decay
     self.final_epsilon = final_epsilon
+
+    self.current_reward = 0
+    self.current_obs = None
 
     self.training_error = []
 
@@ -194,23 +161,51 @@ class PresidentAgent(Player):
     otherwise a random action with probability epsilon to ensure exploration.
     """
 
-    # Action la plus "logique" pour l'agent, à partir de l'observation (transformée en tant que clé des q_values). Todo : ajouter du random pour le laisser découvrir
-    card_index = np.argmax(self.q_values[str(obs)])
-    if card_index >= len(self.hand.cards) or card_index < 0:
-      raise InvalidCardException("Not the right index !")
-
-    """
-    # with probability epsilon return a random action to explore the environment
     if np.random.random() < self.epsilon:
-      return env.action_space.sample()
+      card_index = self.environment.action_space.sample()
 
     # with probability (1 - epsilon) act greedily (exploit)
     else:
-      return int(np.argmax(self.q_values[obs]))
-    """
+      card_index = int(np.argmax(self.q_values[obs]))
+
+    self.current_obs = obs
 
     return card_index
 
+  def step(self, played_cards):
+    last_card = played_cards.cards[-1] if len(played_cards.cards) else 0
+    # Player and self.played_cards is the observation in this context
+    obs = (last_card % 13, self.hand_values())
+    card_index = self.get_action(obs)
+
+    try:
+      if card_index >= len(self.hand.cards) or card_index < 0:
+        raise InvalidCardException("Not the right index !")
+
+      if card_index < 0:
+        raise InvalidCardException("Card not valid : <0.")
+
+      card = self.hand.cards[card_index]
+
+      if card is None:
+        raise InvalidCardException("Card not valid : None.")
+
+      # If card value < the last one, error for the agent
+      if card % 13 < last_card % 13:
+        raise InvalidCardException(
+          "Carte {} plus basse que {}. Veuillez en choisir une autre.".format(get_card_string(card),
+                                                                              get_card_string(last_card)))
+
+      # Little reward to be able to play a card
+      self.current_reward += 0.1
+      return card
+
+    except InvalidCardException as e:
+      # Essaye de jouer une carte qu'il ne peut pas => stop de l'épisode
+      print("###################{} a fait une erreur : {}".format(self.name, e.__str__()))
+      self.current_reward -= 10.0
+      self.update(obs, card_index, self.current_reward, True, next_obs=None)
+      raise e
 
   def update(
           self,
@@ -232,7 +227,7 @@ class PresidentAgent(Player):
     self.training_error.append(temporal_difference)
 
   def decay_epsilon(self):
-    self.epsilon = max(self.final_epsilon, self.epsilon - epsilon_decay)
+    self.epsilon = max(self.final_epsilon, self.epsilon - self.epsilon_decay)
 
   def check_convergence(self, threshold: float = 0.1, num_episodes: int = 100):
     last_n_errors = self.training_error[-num_episodes:]
@@ -249,8 +244,11 @@ class PresidentAgent(Player):
     data = {
       "q_values": dict(self.q_values),
       "training_error": self.training_error,
-      #"other_data": ...  # Ajoutez ici d'autres données importantes que vous souhaitez enregistrer
+      # "other_data": ...  # Ajoutez ici d'autres données importantes que vous souhaitez enregistrer
     }
 
     with open(file_path, "w") as f:
       json.dump(data, f)
+
+class GreedPlayer(Player):
+  pass
