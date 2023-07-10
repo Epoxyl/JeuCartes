@@ -42,6 +42,10 @@ class Plateau(Env):
         card = self.deck.draw_card()
         player.add_card(card)
 
+    for player in self.players:
+      player.hand_sort()
+      player.show_hand()
+
   def empty_played_cards(self):
     self.defausse.cards += self.played_cards.cards
     self.played_cards.cards = []

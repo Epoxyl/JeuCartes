@@ -2,10 +2,9 @@ from datetime import datetime
 
 from Game import game_directory
 
-
 class Log:
   save = False
-  path = "{}/log.txt".format(game_directory)
+  path = "{}/Logs/log.txt".format(game_directory)
 
   @staticmethod
   def printlog(message):

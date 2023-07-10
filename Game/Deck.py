@@ -4,7 +4,7 @@ cards_value = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "valet", "dame", "r
 
 
 def get_card_string(card):
-  return cards_value[card % 13] + "("+str(card)+")"
+  return cards_value[card % 13] + "(" + str(card) + ")"
 
 
 class Deck:
@@ -38,3 +38,17 @@ class Deck:
 
   def add_card(self, card):
     self.cards.append(card)
+
+  def sort(self):
+    # todo : optimiser algo de tri
+    new_cards = []
+    for card in self.cards:
+      print(card)
+      print(new_cards)
+      i = 0
+      while len(new_cards) and i < len(new_cards) and (card % 13) > (new_cards[i] % 13):
+        i += 1
+      print(i)
+      new_cards.insert(i, card)
+
+    self.cards = new_cards

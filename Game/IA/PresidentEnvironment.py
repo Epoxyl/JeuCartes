@@ -12,6 +12,8 @@ from Game.Utils.Exceptions import InvalidCardException
 
 from collections import defaultdict
 
+from Game.__main__ import Results
+
 
 class PresidentEnv(gym.Env):
   """
@@ -151,6 +153,7 @@ class PresidentAgent(Player):
     self.final_epsilon = final_epsilon
 
     self.current_reward = 0
+    self.last_action = 0
     self.current_obs = None
 
     self.training_error = []
@@ -177,24 +180,22 @@ class PresidentAgent(Player):
     # Player and self.played_cards is the observation in this context
     obs = (last_card % 13, self.hand_values())
     card_index = self.get_action(obs)
+    self.last_action = card_index
 
     try:
       if card_index >= len(self.hand.cards) or card_index < 0:
-        raise InvalidCardException("Not the right index !")
-
-      if card_index < 0:
-        raise InvalidCardException("Card not valid : <0.")
+        raise InvalidCardException("Not the right index !", 1)
 
       card = self.hand.cards[card_index]
 
       if card is None:
-        raise InvalidCardException("Card not valid : None.")
+        raise InvalidCardException("Card not valid : None.", 3)
 
       # If card value < the last one, error for the agent
       if card % 13 < last_card % 13:
         raise InvalidCardException(
           "Carte {} plus basse que {}. Veuillez en choisir une autre.".format(get_card_string(card),
-                                                                              get_card_string(last_card)))
+                                                                              get_card_string(last_card)), 2)
 
       # Little reward to be able to play a card
       self.current_reward += 0.1
@@ -204,6 +205,7 @@ class PresidentAgent(Player):
       # Essaye de jouer une carte qu'il ne peut pas => stop de l'épisode
       print("###################{} a fait une erreur : {}".format(self.name, e.__str__()))
       self.current_reward -= 10.0
+      Results.savelog(e.code, self.current_reward)
       self.update(obs, card_index, self.current_reward, True, next_obs=None)
       raise e
 
@@ -225,6 +227,9 @@ class PresidentAgent(Player):
             self.q_values[str(obs)][action] + self.lr * temporal_difference
     )
     self.training_error.append(temporal_difference)
+
+    if terminated:
+      self.current_reward = 0
 
   def decay_epsilon(self):
     self.epsilon = max(self.final_epsilon, self.epsilon - self.epsilon_decay)

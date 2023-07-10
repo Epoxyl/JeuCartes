@@ -21,6 +21,9 @@ class Player:
     self.hand.add_card(card)
     return len(self.hand.cards)
 
+  def hand_sort(self):
+    self.hand.sort()
+
   def remove_card_by_index(self, card_index):
     card = self.hand.draw_card(card_index)
     return len(self.hand.cards)

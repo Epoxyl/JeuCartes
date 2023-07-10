@@ -5,9 +5,12 @@ from Game.IA.PresidentEnvironment import PresidentAgent, GreedPlayer
 from Game.Plateau import Plateau
 from Game.Player import Player
 from Game.Utils.Exceptions import InvalidCardException
+from Game.__main__ import Results
 
 
 class President(Plateau):
+  agents_reward = [20, 10, 5, 1]
+
   def __init__(self, players, add_agent=False, environment=None):
     super().__init__(players, "Président", add_agent, environment)
 
@@ -16,6 +19,8 @@ class President(Plateau):
     One game of a president. We launch "tours" while players have cards, and start a new one each time nobody can play.
     :return:
     """
+    self.classement = []
+
     self.deck = Deck(52)
     self.deck.shuffle_cards()
 
@@ -27,7 +32,7 @@ class President(Plateau):
     while self.players_have_cards():
       print("------------ Nouveau tour !--------------")
       while not len(self.players[player_id].hand_values()):
-        player_id=(player_id+1)%len(self.players)
+        player_id = (player_id + 1) % len(self.players)
       player_id = self.tour(player_id)
       print("------------ Fin du tour !--------------")
 
@@ -168,6 +173,12 @@ class President(Plateau):
     """
     print("{} a fini son jeu ! Bien joué !".format(player.name))
     self.classement.append(player)
+    if player.__class__ == PresidentAgent:
+      print(len(self.classement))
+      print(len(self.agents_reward))
+      player.current_reward += self.agents_reward[len(self.classement) - 1]
+      Results.savelog(0, player.current_reward)
+      player.update(player.current_obs, player.last_action, player.current_reward, True, next_obs=None)
     return len(self.classement) == 1
 
   def _get_obs(self, player):
