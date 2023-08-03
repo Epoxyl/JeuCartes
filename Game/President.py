@@ -40,6 +40,27 @@ class President(Plateau):
     print("Président : {}".format(self.classement[0]))
     print("Trou duc : {}".format(self.classement[-1]))
 
+  def launch_training_game(self):
+    self.classement = []
+
+    self.deck = Deck(52)
+
+    self.empty_player_cards()
+    self.empty_played_cards()
+    self.ditribute_to_players(7)
+
+    player_id = 0
+    while self.players_have_cards():
+      print("------------ Nouveau tour !--------------")
+      while not len(self.players[player_id].hand_values()):
+        player_id = (player_id + 1) % len(self.players)
+      player_id = self.tour(player_id)
+      print("------------ Fin du tour !--------------")
+
+    print("Fin du jeu !")
+    print("Président : {}".format(self.classement[0]))
+    print("Trou duc : {}".format(self.classement[-1]))
+
   def tour(self, player_id=0):
     """
     Game tour, while at least two players can play. Starts with the last player who finished previous tour, or the one next to him if he has no cards left.

@@ -43,12 +43,9 @@ class Deck:
     # todo : optimiser algo de tri
     new_cards = []
     for card in self.cards:
-      print(card)
-      print(new_cards)
       i = 0
       while len(new_cards) and i < len(new_cards) and (card % 13) > (new_cards[i] % 13):
         i += 1
-      print(i)
       new_cards.insert(i, card)
 
     self.cards = new_cards

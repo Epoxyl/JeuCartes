@@ -128,7 +128,7 @@ class PresidentAgent(Player):
   """
   environment = None
 
-  def __init__(self, name, environment, learning_rate: float = 0.1, initial_epsilon: float = 1.0,
+  def __init__(self, name, environment, learning_rate: float = 0.1, initial_epsilon: float = 0.5,
                epsilon_decay: float = 0.001, final_epsilon: float = 0.1,
                discount_factor: float = 0.95):
     """Initialize a Reinforcement Learning agent with an empty dictionary
@@ -165,48 +165,52 @@ class PresidentAgent(Player):
     """
 
     if np.random.random() < self.epsilon:
-      card_index = self.environment.action_space.sample()
+      card_value = self.environment.action_space.sample()
 
     # with probability (1 - epsilon) act greedily (exploit)
     else:
-      card_index = int(np.argmax(self.q_values[obs]))
+      obs_tuple = (obs[0], tuple(obs[1]))
+      card_value = int(np.argmax(self.q_values[obs_tuple]))
 
     self.current_obs = obs
 
-    return card_index
+    return card_value
 
   def step(self, played_cards):
     last_card = played_cards.cards[-1] if len(played_cards.cards) else 0
     # Player and self.played_cards is the observation in this context
-    obs = (last_card % 13, self.hand_values())
-    card_index = self.get_action(obs)
-    self.last_action = card_index
+    obs = (last_card, self.hand.cards)
+    card = self.get_action(obs)
+    self.last_action = card
+    print("card value chosen : {}".format(card))
 
     try:
-      if card_index >= len(self.hand.cards) or card_index < 0:
-        raise InvalidCardException("Not the right index !", 1)
+      if card not in self.hand.cards:
+        raise InvalidCardException("Not in the hand !", 1)
 
-      card = self.hand.cards[card_index]
+      card_value = card % 13
 
+      """
       if card is None:
         raise InvalidCardException("Card not valid : None.", 3)
+      """
 
       # If card value < the last one, error for the agent
-      if card % 13 < last_card % 13:
+      if card_value < last_card % 13:
         raise InvalidCardException(
           "Carte {} plus basse que {}. Veuillez en choisir une autre.".format(get_card_string(card),
                                                                               get_card_string(last_card)), 2)
 
       # Little reward to be able to play a card
-      self.current_reward += 0.1
+      self.current_reward += 1
       return card
 
     except InvalidCardException as e:
       # Essaye de jouer une carte qu'il ne peut pas => stop de l'épisode
       print("###################{} a fait une erreur : {}".format(self.name, e.__str__()))
-      self.current_reward -= 10.0
+      self.current_reward -= 10.0 if e.code == 2 else 15.0
       Results.savelog(e.code, self.current_reward)
-      self.update(obs, card_index, self.current_reward, True, next_obs=None)
+      self.update(obs, card, self.current_reward, True, next_obs=None)
       raise e
 
   def update(

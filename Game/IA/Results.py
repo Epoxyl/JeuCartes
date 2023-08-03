@@ -51,6 +51,7 @@ class Results:
 
     for code in different_error_codes:
       plt.plot(x, number_errors[code], marker='o', label=f"Error Code {code}")
+      plt.legend()
 
     plt.xlabel("Indice dans le tableau results")
     plt.ylabel("Nombre d'erreurs")

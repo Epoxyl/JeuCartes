@@ -4,3 +4,8 @@ Contre des joueurs greedy :
 Essai 1 : Il semblerait qu'il n'y a pas d'apprentissage. Au bout de 10000 essais il continue de faire les mêmes erreurs.
             La partie se finit quelques fois, mais ça semble être du hasard (les courbes restent plutôt linéaires, avec peut-être une légère baisse de l'erreur d'indice).
 Essai 2 : Tri des cartes par ordre croissant. Toujours pas de changement
+Essai 3 : Suppression des choix d'index dans la main, à la place choix directement des valeurs. Les pourcentages d'erreurs changent : principalement erreur n°1 (not in hand). Comment lui faire comprendre qu'il doit jouer dans sa main ?
+Essai 4 : Nouvel essai avec le même jeu à chaque épisode. Toujours impossible d'apprendre qu'il faut jouer une carte de sa main...
+
+
+Proxmal policy optimisation

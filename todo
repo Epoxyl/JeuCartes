@@ -5,3 +5,8 @@ update à chaque action ? Si oui, quelles obs et next_obs ? Celles après sa pro
 Stocker et interpréter les résultats de l'agent : voir s'il y a un apprentissage
 Lui donner des parties fixes (un ordre de cartes fix) ?
 Trier les cartes par vvaleur pour que ce soit plus simple pour lui ?
+
+
+/!\ adapter pour donner la valeur de carte dans les observations + choix
+
+Tester l'implé d'un réseau de neurones -> Deep Q-Learning
